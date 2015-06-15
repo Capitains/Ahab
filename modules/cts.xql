@@ -32,29 +32,10 @@ xquery version "3.0";
 module namespace ctsx = "http://alpheios.net/namespaces/cts";
 import module namespace xmldb="http://exist-db.org/xquery/xmldb";
 
-import module namespace console = "http://exist-db.org/xquery/console";
-
 declare namespace CTS = "http://chs.harvard.edu/xmlns/cts";
 declare namespace ti = "http://chs.harvard.edu/xmlns/cts";
 declare namespace tei = "http://www.tei-c.org/ns/1.0";
-declare namespace dc = "http://purl.org/dc/elements/1.1/";
 
-declare variable $ctsx:tocChunking :=
-(
-    <tocChunk type="Book" size="1"/>,
-    <tocChunk type="Column" size="1"/>,
-    <tocChunk type="Volume" size="1"/>,
-    <tocChunk type="Section" size="1"/>,
-    <tocChunk type="Chapter" size="1"/>,
-    <tocChunk type="Article" size="1"/>,
-    <tocChunk type="Line" size="30"/>,
-    <tocChunk type="Verse" size="30"/>,
-    <tocChunk type="Fragment" size="1"/>,
-    <tocChunk type="Page" size="1"/>,
-    <tocChunk type="Entry" size="1"/>
-);
-
-declare variable $ctsx:maxPassageNodes := 100;
 declare variable $ctsx:defaultInventory := fn:doc("../conf/conf.xml")//default/text();
 declare variable $ctsx:conf := collection(xs:string(fn:doc("../conf/conf.xml")//inventories/@inventoryCollection));
 declare variable $ctsx:cache := fn:doc("../conf/conf.xml")//credentials;
