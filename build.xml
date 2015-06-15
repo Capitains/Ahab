@@ -4,9 +4,14 @@
     <property name="project.version" value="${package(version)}"/>
     <property name="project.app" value="CTS5XQ"/>
     <property name="build.dir" value="build"/>
+    <property name="release.dir" value="releases"/>
     <property name="modules" value="modules"/>
     <target name="xar">
         <mkdir dir="${build.dir}"/>
-        <zip basedir="." destfile="${build.dir}/${project.app}-${project.version}.xar" excludes="${build.dir}/*, .git/*, .gitignore"/>
+        <zip basedir="." destfile="${build.dir}/${project.app}-${project.version}.xar" excludes="${release.dir}/*, ${build.dir}/*, .git/*, .gitignore"/>
+    </target>
+    <target name="release">
+        <mkdir dir="${release.dir}"/>
+        <zip basedir="." destfile="${release.dir}/${project.app}.xar" excludes="${build.dir}/*, ${release.dir}/*, .git/*, .gitignore"/>
     </target>
 </project>
