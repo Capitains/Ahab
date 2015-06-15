@@ -20,11 +20,11 @@ xquery version "3.0";
 :)
 
 import module namespace mapsutils = "http://github.com/ponteineptique/CTS-API"
-       at "modules/maps-utils.xquery";
+       at "modules/maps-utils.xql";
 import module namespace ctsx = "http://alpheios.net/namespaces/cts"
-       at "modules/cts.xquery";
+       at "modules/cts.xql";
 import module namespace ctsi = "http://alpheios.net/namespaces/cts-implementation"
-       at "modules/cts-impl.xquery";
+       at "modules/cts-impl.xql";
 import module namespace console = "http://exist-db.org/xquery/console";
 (:  :import module namespace map = "http://www.w3.org/2005/xpath-functions/map"; :)
 

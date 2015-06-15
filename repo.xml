@@ -11,5 +11,4 @@
     <target>CTS5XQ</target>
     <prepare>pre-install.xql</prepare>
     <finish/>
-    <deployed>2015-04-24T08:58:18.15+02:00</deployed>
 </meta>

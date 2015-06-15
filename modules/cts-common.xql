@@ -1,65 +1,19 @@
-xquery version "3.0"; 
-(:
-  Copyright 2010-2014 The Alpheios Project, Ltd.
-  http://alpheios.net
+xquery version "3.0";
 
-  This file is part of Alpheios.
+module namespace cts-common = "http://github.com/Capitains/CTS5-XQ/commons";
 
-  Alpheios is free software: you can redistribute it and/or modify
-  it under the terms of the GNU General Public License as published by
-  the Free Software Foundation, either version 3 of the License, or
-  (at your option) any later version.
-
-  Alpheios is distributed in the hope that it will be useful,
-  but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-  GNU General Public License for more details.
-
-  You should have received a copy of the GNU General Public License
-  along with this program.  If not, see <http://www.gnu.org/licenses/>.
- :)
-
-(: Beginnings of the CTS Repository Interface Implementation :)
-(: TODO LIST
-            support ranges subreferences
-            namespacing on cts responses
-            getPassage
-            getValidReff
-            typecheck the function parameters and return values
-            make getNextPrev recursive so that it can point to first/last in next/previous book, etc.
-:)
-
-module namespace ctsx = "http://alpheios.net/namespaces/cts";
 import module namespace xmldb="http://exist-db.org/xquery/xmldb";
-
-import module namespace console = "http://exist-db.org/xquery/console";
 
 declare namespace CTS = "http://chs.harvard.edu/xmlns/cts";
 declare namespace ti = "http://chs.harvard.edu/xmlns/cts";
 declare namespace tei = "http://www.tei-c.org/ns/1.0";
-declare namespace dc = "http://purl.org/dc/elements/1.1/";
 
-declare variable $ctsx:tocChunking :=
-(
-    <tocChunk type="Book" size="1"/>,
-    <tocChunk type="Column" size="1"/>,
-    <tocChunk type="Volume" size="1"/>,
-    <tocChunk type="Section" size="1"/>,
-    <tocChunk type="Chapter" size="1"/>,
-    <tocChunk type="Article" size="1"/>,
-    <tocChunk type="Line" size="30"/>,
-    <tocChunk type="Verse" size="30"/>,
-    <tocChunk type="Fragment" size="1"/>,
-    <tocChunk type="Page" size="1"/>,
-    <tocChunk type="Entry" size="1"/>
-);
+declare variable $cts-common:defaultInventory := fn:doc("../conf/conf.xml")//default/text();
+declare variable $cts-common:conf := collection(xs:string(fn:doc("../conf/conf.xml")//inventories/@inventoryCollection));
+declare variable $cts-common:cache := fn:doc("../conf/conf.xml")//credentials;
 
-declare variable $ctsx:maxPassageNodes := 100;
-declare variable $ctsx:defaultInventory := fn:doc("../conf/conf.xml")//default/text();
-declare variable $ctsx:conf := collection(xs:string(fn:doc("../conf/conf.xml")//inventories/@inventoryCollection));
-declare variable $ctsx:cache := fn:doc("../conf/conf.xml")//credentials;
 
-declare %private function local:citationXpath($citation) {
+declare function cts-common:citationXpath($citation) {
     
     let $first := fn:string($citation/@scope)
     let $last := replace(fn:string($citation/@xpath), "//", "/")
@@ -69,7 +23,7 @@ declare %private function local:citationXpath($citation) {
     return $xpath
 };
 
-declare %private function local:fake-match-document(
+declare function cts-common:fake-match-document(
         $level as xs:integer, (: Level at which we are currently :)
         $citations as element()*, (: List of citations :)
         $body, (: Body/Context to which we should make xpath :)
@@ -78,7 +32,7 @@ declare %private function local:fake-match-document(
         $remove as xs:string? (: String to remove from xpath as its parent related path :)
     ) {
         let $citation := $citations[1]
-        let $xpath := local:citationXpath($citation)
+        let $xpath := cts-common:citationXpath($citation)
         let $masterPath := 
             if ($remove)
             then replace($xpath, "^("||replace($remove, '(\.|\[|\]|\\|\||\-|\^|\$|\?|\*|\+|\{|\}|\(|\))','\\$1')||")", "")
@@ -94,7 +48,7 @@ declare %private function local:fake-match-document(
                 then
                     ()
                 else
-                    local:fake-match-document($nextLevel, $next, $master, $urn, ($parents, string($master/@n)), $xpath)
+                    cts-common:fake-match-document($nextLevel, $next, $master, $urn, ($parents, string($master/@n)), $xpath)
                     
              return (
               element urn {
@@ -106,9 +60,9 @@ declare %private function local:fake-match-document(
 };
 
 (: for backwards compatibility default to alpheios inventory :)
-declare function ctsx:parseUrn($a_urn as xs:string)
+declare function cts-common:parseUrn($a_urn as xs:string)
 {
-  ctsx:parseUrn($ctsx:defaultInventory, $a_urn)
+  cts-common:parseUrn($cts-common:defaultInventory, $a_urn)
 };
 (:
     function to parse a CTS Urn down to its individual parts
@@ -148,7 +102,7 @@ declare function ctsx:parseUrn($a_urn as xs:string)
         TODO this latter option is a bit of hack, should look at a better way to handle this
         but since most requests go through parseUrn, this was the easiest place for now
 :)
-declare function ctsx:parseUrn($a_inv as xs:string, $a_urn as xs:string)
+declare function cts-common:parseUrn($a_inv as xs:string, $a_urn as xs:string)
 {
   if (fn:matches($a_urn, '^alpheiosusertext:'))
   then
@@ -176,7 +130,7 @@ declare function ctsx:parseUrn($a_inv as xs:string, $a_urn as xs:string)
     let $namespaceUrn := fn:string-join($components[1,2,3], ":")
     let $groupUrn := $namespaceUrn || ":" || $textgroup
     let $workUrn := $groupUrn || "." || $work
-    let $cat := ctsx:getCapabilities($a_inv, $namespaceUrn, $groupUrn, $workUrn)
+    let $cat := cts-common:getCapabilities($a_inv, $namespaceUrn, $groupUrn, $workUrn)
     let $catwork :=
       $cat//ti:textgroup[@urn eq $groupUrn]/ti:work[@urn eq $workUrn]
     let $version :=
@@ -230,8 +184,8 @@ declare function ctsx:parseUrn($a_inv as xs:string, $a_urn as xs:string)
         element passage { $passage },
         element passageParts
         {
-          ctsx:_parseRangePart($part1),
-          ctsx:_parseRangePart($part2)
+          cts-common:_parseRangePart($part1),
+          cts-common:_parseRangePart($part2)
         },
         element fileInfo
         {
@@ -285,7 +239,7 @@ declare function ctsx:parseUrn($a_inv as xs:string, $a_urn as xs:string)
       }
 };
 
-declare %private function ctsx:_parseRangePart($part1)
+declare function cts-common:_parseRangePart($part1)
 {
   if (fn:empty($part1)) then () else
 
@@ -319,29 +273,7 @@ declare %private function ctsx:_parseRangePart($part1)
     }
 };
 
-(:
-    get a passage from a text
-    Parameters:
-        $a_inv the inventory name
-        $a_urn the passage urn
-    Return Value:
-        getPassage reply
-:)
-declare function ctsx:getPassage(
-  $a_inv as xs:string,
-  $a_urn as xs:string
-) as element(CTS:reply)
-{
-  element CTS:reply
-  {
-    element CTS:urn { $a_urn },
-    element CTS:passage {
-        ctsx:extractPassage($a_inv, $a_urn)
-    }
-  }
-};
-
-declare function ctsx:simpleUrnParser($a_urn)
+declare function cts-common:simpleUrnParser($a_urn)
 {
     let $components := fn:tokenize($a_urn, ":")
     let $namespace := $components[3]
@@ -372,146 +304,12 @@ declare function ctsx:simpleUrnParser($a_urn)
       }
 };
 
-declare function ctsx:text-empty($node) {
+declare function cts-common:text-empty($node) {
     if (fn:empty($node/text()))
     then ()
     else $node
 };
-(:
-    CTS getCapabilities request
-    Parameters:
-        $a_inv - the inventory name
-        $a_urn - A urn
-    Return Value
-        the requested catalog entries
 
-    If group and work ids are supplied, only that work will be returned
-    otherwise all works in the inventory will be returned
-:)
-declare function ctsx:getCapabilities($a_inv, $a_urn)
-{
-  (: get all works in inventory :)
-  if (fn:exists($a_urn))
-  then
-      let $parsed_urn := ctsx:simpleUrnParser($a_urn)
-      return ctsx:getCapabilities($a_inv, ctsx:text-empty($parsed_urn/namespace), ctsx:text-empty($parsed_urn/groupUrn), ctsx:text-empty($parsed_urn/workUrn))
-  else
-    ctsx:getCapabilities($a_inv, (), (), ())
-};
-declare function ctsx:getCapabilities($a_inv, $a_namespaceUrn, $a_groupUrn, $a_workUrn)
-{
-  let $ti := ($ctsx:conf//ti:TextInventory[@tiid = $a_inv])[1]
-  
-  let $groups :=
-    (: specified work :)
-    if (fn:exists($a_groupUrn))
-    then $ti/ti:textgroup[@urn = $a_groupUrn]
-    else if (fn:exists($a_namespaceUrn))
-    then $ti/ti:textgroup[starts-with(@urn, $a_namespaceUrn)]
-    else $ti/ti:textgroup
-
-  let $groupUrns := fn:distinct-values($groups/@urn)
-  let $works :=
-    (: specified work :)
-    if (fn:exists($a_workUrn))
-    then $ti//ti:work[@groupUrn = $groupUrns][@urn = $a_workUrn]
-    (: all works in inventory :)
-    else $ti//ti:work[@groupUrn = $groupUrns]
-
-  return
-    element CTS:reply
-    {
-      element ti:filter {$a_workUrn},
-      element ti:TextInventory
-      {
-        (:
-        attribute {concat('xmlns:', "ti")} { "http://chs.harvard.edu/xmlns/cts3/ti" },
-        attribute {concat('xmlns:', "dc")} { "http://purl.org/dc/elements/1.1/" },
-        attribute tiversion { "5.0.rc.1" },
-        :)
-        $ti/@*,
-        for $group in $groups
-        let $groupWorks := $works[@groupUrn eq $group/@urn]
-        where fn:count($groupWorks) gt 0
-        order by $group/@urn
-        return
-          element ti:textgroup
-          {
-            $group/@urn,
-            for $work in $groupWorks
-            order by $work/@urn
-            return
-              element ti:work
-              {
-                $work/(@urn,@xml:lang),
-                $work/*,
-                for $version in
-                  /(ti:edition|ti:translation)[@workUrn eq $work/@urn]
-                order by $version/@urn
-                return
-                  element { fn:node-name($version) }
-                  {
-                    $version/@urn,
-                    $version/*
-                  }
-              }
-          }
-      }
-    }
-};
-
-(:
-    CTS getValidReff request (with or without specified level)
-    Parameters:
-        $a_inv the inventory name
-        $a_urn the passage urn
-        $a_level citation level
-    Returns
-        the list of valid urns
-:)
-declare function ctsx:getValidReff($a_inv, $a_urn) as element(CTS:reply)
-{
-    ctsx:getValidReff(
-      $a_inv,
-      $a_urn,
-      1
-    )
-};
-
-declare function ctsx:getValidReff(
-  $a_inv as xs:string,
-  $a_urn as xs:string,
-  $a_level as xs:int
-) as element(CTS:reply)
-{
-  let $cts := ctsx:parseUrn($a_inv, $a_urn)
-  let $entry := ctsx:getCatalogEntry($cts, $a_inv)
-  
-  let $nparts := fn:count($cts/passageParts/rangePart[1]/part)
-  let $level := 
-    if ($nparts > 0)
-    then 
-        $nparts + 1
-    else
-      if($a_level > 0)
-      then $a_level
-      else
-        fn:count($entry/ti:online//ti:citation)
-  
-  let $reffs := ctsx:getValidUrns($a_inv, $cts/versionUrn/text(), $level)
-  return
-  element CTS:reply
-  {
-    element CTS:reff { 
-        attribute level { $level },
-        if (count(tokenize($a_urn, ":")) > 4)
-        then
-            $reffs[starts-with(./text(), $cts/urn/text()||".")]
-        else
-            $reffs
-    }
-  }
-};
 
 (:
   CTS getValidUrns request
@@ -530,31 +328,31 @@ declare function ctsx:getValidReff(
   Substituting a specific value for '?' yields a step for mapping URN passage components
   to elements.
 :)
-declare function ctsx:getValidUrns(
+declare function cts-common:getValidUrns(
   $a_inv as xs:string,
   $a_urn as xs:string,
   $a_level as xs:int
 ) as element(CTS:urn)*
 {
-    ctsx:getValidUrns($a_inv, $a_urn, $a_level, true())
+    cts-common:getValidUrns($a_inv, $a_urn, $a_level, true())
 };
 
-declare function ctsx:getValidUrns(
+declare function cts-common:getValidUrns(
   $a_inv as xs:string,
   $a_urn as xs:string,
   $a_level as xs:int,
   $remodel as xs:boolean
 ) as element(CTS:urn)*
 {
-  let $cts := ctsx:parseUrn($a_inv, $a_urn)
+  let $cts := cts-common:parseUrn($a_inv, $a_urn)
   let $startVals := $cts/passageParts/rangePart[1]/part[1 to $a_level]/fn:string()
   let $endVals := $cts/passageParts/rangePart[2]/part[1 to $a_level]/fn:string()
 
-  let $entry := ctsx:getCatalogEntry($cts, $a_inv)
+  let $entry := cts-common:getCatalogEntry($cts, $a_inv)
   let $cites := $entry/ti:online//ti:citation
   let $citations := subsequence($cites, 1, $a_level)
   let $doc := fn:doc($cts/fileInfo/fullPath)
-  let $urns := local:use-fake-document-cache(
+  let $urns := cts-common:use-fake-document-cache(
         1, (: Level at which we are currently :)
         $cites, (: List of citations :)
         $doc, (: Body/Context to which we should make xpath :)
@@ -576,7 +374,7 @@ declare function ctsx:getValidUrns(
 };
 
 
-declare %private function local:use-fake-document-cache(
+declare function cts-common:use-fake-document-cache(
     $level as xs:integer, (: Level at which we are currently :)
     $citations as element()*, (: List of citations :)
     $body, (: Body/Context to which we should make xpath :)
@@ -600,7 +398,7 @@ declare %private function local:use-fake-document-cache(
         if ($doc)
         then $doc
         else
-            let $response := local:fake-match-document(
+            let $response := cts-common:fake-match-document(
                                 $level,
                                 $citations,
                                 $body,
@@ -609,7 +407,7 @@ declare %private function local:use-fake-document-cache(
                                 $remove
                             )
             let $store-return-status := (
-                    xmldb:login('/db/urns-cache', $ctsx:cache/user/text(), $ctsx:cache/password/text()),
+                    xmldb:login('/db/urns-cache', $cts-common:cache/user/text(), $cts-common:cache/password/text()),
                     xmldb:create-collection('/db/urns-cache/', $safeUrn),
                     xmldb:store($collection, $filename, element reff { $response } )
                 )
@@ -621,7 +419,7 @@ declare %private function local:use-fake-document-cache(
  : Merge Urns takes a tuple of urn and transform it into one urn
  : Nullable
  :)
-declare %private function ctsx:mergeUrns($reff) {
+declare function cts-common:mergeUrns($reff) {
   if (count($reff) = 0)
   then
       ()
@@ -634,85 +432,6 @@ declare %private function ctsx:mergeUrns($reff) {
           return $reff[1] || "-"  || $e
 };
 (:
-    CTS getPassagePlus request, returns the requested passage plus previous/next references
-    Parameters:
-        $a_inv the inventory name
-        $a_urn the passage urn
-    Return Value:
-        <reply>
-            <TEI>
-               [ passage elements ]
-            </TEI>
-        </reply>
-        <prevnext>
-            <prev>[previous urn]</prev>
-            <next>[next urn]</next>
-        </prevnext>
-:)
-declare function ctsx:getPassagePlus($a_inv as xs:string,$a_urn as xs:string)
-{
-  ctsx:getPassagePlus($a_inv, $a_urn, fn:false())
-};
-
-(:
-    CTS getPassagePlus request, returns the requested passage plus previous/next references
-    Parameters:
-        $a_inv the inventory name
-        $a_urn the passage urn
-        $a_withSiblings - alpheios extension to get sibling unciteable elements for passages (for display - e.g. speaker)
-    Return Value:
-        <reply>
-            <TEI>
-               [ passage elements ]
-            </TEI>
-        </reply>
-        <prevnext>
-            <prev>[previous urn]</prev>
-            <next>[next urn]</next>
-        </prevnext>
-:)
-declare function ctsx:getPassagePlus(
-  $a_inv as xs:string,
-  $a_urn as xs:string,
-  $a_withSiblings as xs:boolean*
-)
-{
-    let $passageInfos := ctsx:preparePassage($a_inv, $a_urn)
-    let $doc := $passageInfos[1]
-    let $xpath1 := $passageInfos[2]
-    let $xpath2 := $passageInfos[3]
-    let $cts := $passageInfos[4]
-    let $entry := $passageInfos[4]
-    let $cite := $passageInfos[4]
-    
-    let $level := fn:count($cts/passageParts/rangePart[1]/part)
-    
-    let $passageFull := <container>{ctsx:_extractPassageLoop($passageInfos)}</container>
-    let $passage := $passageFull//*:body
-    
-    let $count := count($cts/passageParts/rangePart[1]/part)
-    let $reffs := ctsx:getValidUrns($a_inv, $cts/versionUrn, $count, false())
-    
-    let $urns := local:prevNextUrns($cts, 0, $reffs)
-  
-  return
-    element CTS:reply {
-      element CTS:urn { $a_urn },
-      element CTS:label {
-        namespace ti { "http://chs.harvard.edu/xmlns/cts" },
-        ctsx:getLabel($a_inv, $a_urn)/child::element()
-      },
-      element CTS:passage {
-        $passage
-      },
-      element CTS:prevnext
-      {
-        $urns
-      }
-    }
-};
-
-(:
     replace bind variables in the template xpath from the TextInventory with the requested values
     Parameters
         $a_startParts the passage parts identifiers of the start of the range
@@ -722,7 +441,7 @@ declare function ctsx:getPassagePlus(
     Return Value
         the full path with the bind variables replaced
 :)
-declare function ctsx:replaceBindVariables(
+declare function cts-common:replaceBindVariables(
   $a_startParts,
   $a_endParts,
   $a_scope,
@@ -732,12 +451,12 @@ declare function ctsx:replaceBindVariables(
   $a_scope ||
   fn:string-join(
     for $path at $i in $a_paths
-    return ctsx:_rbv($a_startParts[$i], $a_endParts[$i], $path),
+    return cts-common:_rbv($a_startParts[$i], $a_endParts[$i], $path),
     ""
   )
 };
 
-declare %private function ctsx:_rbv(
+declare function cts-common:_rbv(
   $a_start,
   $a_end,
   $a_path
@@ -790,7 +509,7 @@ declare %private function ctsx:_rbv(
     Return Value
         the full path with the bind variables replaced
 :)
-declare function ctsx:replaceBindVariables(
+declare function cts-common:replaceBindVariables(
   $a_passageParts,
   $a_scope,
   $a_paths
@@ -799,12 +518,12 @@ declare function ctsx:replaceBindVariables(
   $a_scope ||
   fn:string-join(
     for $path at $i in $a_paths
-    return ctsx:_rbv($a_passageParts[$i], $path),
+    return cts-common:_rbv($a_passageParts[$i], $path),
     ""
   )
 };
 
-declare %private function ctsx:_rbv
+declare function cts-common:_rbv
 (
   $a_part, 
   $a_path
@@ -834,10 +553,10 @@ declare %private function ctsx:_rbv
     Return Value
       the catalog entry for the requested version
 :)
-declare function ctsx:getCatalogEntry($a_cts, $a_inv) as node()*
+declare function cts-common:getCatalogEntry($a_cts, $a_inv) as node()*
 {
   let $version :=
-    $ctsx:conf//ti:TextInventory[@tiid=$a_inv]//(ti:edition|ti:translation)
+    $cts-common:conf//ti:TextInventory[@tiid=$a_inv]//(ti:edition|ti:translation)
       [@workUrn eq $a_cts/workUrn]
       [@urn eq $a_cts/versionUrn]
 
@@ -850,7 +569,7 @@ declare function ctsx:getCatalogEntry($a_cts, $a_inv) as node()*
 };
 
 (:
-  ctsx:_extractPassage - recursive function to extract passage
+  cts-common:_extractPassage - recursive function to extract passage
     $a_base - base node
     $a_path1 - starting path of subpassage to extract
     $a_path2 - ending path of subpassage to extract
@@ -860,7 +579,7 @@ declare function ctsx:getCatalogEntry($a_cts, $a_inv) as node()*
   If $a_path2 is null then all nodes after the node
   specified by $a_path1 should be extracted.
 :)
-declare function ctsx:_extractPassage(
+declare function cts-common:_extractPassage(
   $a_base as node(),
   $a_path1 as xs:string*,
   $a_path2 as xs:string*
@@ -889,7 +608,7 @@ declare function ctsx:_extractPassage(
       element { "tei:" || fn:node-name($n1) }
       {
         $n1/@*,
-        ctsx:_extractPassage($n1, fn:tail($a_path1), fn:tail($a_path2))
+        cts-common:_extractPassage($n1, fn:tail($a_path1), fn:tail($a_path2))
       }
     (: if everything from node to end :)
     else if (fn:exists($n1) and fn:empty($step2))
@@ -898,7 +617,7 @@ declare function ctsx:_extractPassage(
       element { "tei:" || fn:node-name($n1) }
       {
         $n1/@*,
-        ctsx:_extractPassage($n1, fn:tail($a_path1), ())
+        cts-common:_extractPassage($n1, fn:tail($a_path1), ())
       },
       $a_base/node()[$n1 << .]
     )
@@ -911,7 +630,7 @@ declare function ctsx:_extractPassage(
       element { "tei:" || fn:node-name($n2) }
       {
         $n2/@*,
-        ctsx:_extractPassage($n2, (), fn:tail($a_path2))
+        cts-common:_extractPassage($n2, (), fn:tail($a_path2))
       }
     )
     (: if steps diverge :)
@@ -922,7 +641,7 @@ declare function ctsx:_extractPassage(
       element { "tei:" || fn:node-name($n1) }
       {
         $n1/@*,
-        ctsx:_extractPassage($n1, fn:tail($a_path1), ())
+        cts-common:_extractPassage($n1, fn:tail($a_path1), ())
       },
       (: take everything in between the nodes :)
       $a_base/node()[($n1 << .) and fn:not(. >> $n2) and fn:not(. is $n2)],
@@ -930,15 +649,15 @@ declare function ctsx:_extractPassage(
       element { "tei:" || fn:node-name($n2) }
       {
         $n2/@*,
-        ctsx:_extractPassage($n2, (), fn:tail($a_path2))
+        cts-common:_extractPassage($n2, (), fn:tail($a_path2))
       }
     )
     (: bad step - return nothing :)
     else ()
 };
 
-declare %private function ctsx:preparePassage($a_inv, $a_urn) {
-  let $cts := ctsx:parseUrn($a_inv,$a_urn)
+declare function cts-common:preparePassage($a_inv, $a_urn) {
+  let $cts := cts-common:parseUrn($a_inv,$a_urn)
   let $doc := fn:doc($cts/fileInfo/fullPath)
   let $level1 := fn:count($cts/passageParts/rangePart[1]/part)
   let $level2 := fn:count($cts/passageParts/rangePart[2]/part)
@@ -950,7 +669,7 @@ declare %private function ctsx:preparePassage($a_inv, $a_urn) {
       fn:error(xs:QName("BAD-RANGE"), "Endpoints of range have different depths: " || $a_urn)
     else ()
 
-  let $entry := ctsx:getCatalogEntry($cts, $a_inv)
+  let $entry := cts-common:getCatalogEntry($cts, $a_inv)
   let $cites := $entry/ti:online//ti:citation
 
   (: subrefs must be in leaf citation nodes :)
@@ -963,13 +682,13 @@ declare %private function ctsx:preparePassage($a_inv, $a_urn) {
 
   (: find passage paths in doc :)
   let $xpath1 :=
-    ctsx:replaceBindVariables(
+    cts-common:replaceBindVariables(
       $cts/passageParts/rangePart[1]/part,
       $cites[1]/@scope,
       fn:subsequence($cites, 1, $level1)/@xpath
     )
   let $xpath2 :=
-    ctsx:replaceBindVariables(
+    cts-common:replaceBindVariables(
       $cts/passageParts/rangePart[2]/part,
       $cites[1]/@scope,
       fn:subsequence($cites, 1, $level2)/@xpath
@@ -997,48 +716,15 @@ declare %private function ctsx:preparePassage($a_inv, $a_urn) {
   return ($doc, $xpath1, $xpath2, $cts, $entry, $cites)
 };
 
-declare %private function ctsx:_extractPassageLoop($passage) {
-    ctsx:_extractPassage(
+declare function cts-common:_extractPassageLoop($passage) {
+    cts-common:_extractPassage(
       $passage[1],
       fn:tail(fn:tokenize($passage[2], "/")),
       fn:tail(fn:tokenize($passage[3], "/"))
     )
 };
 
-declare function ctsx:extractPassage($a_inv, $a_urn)
-{
-  let $passage := ctsx:preparePassage($a_inv, $a_urn)
-  return
-    (: extract full passage :)
-    ctsx:_extractPassageLoop($passage)
-};
-
-declare function ctsx:getPrevNextUrn(
-    $a_inv as xs:string*,
-    $a_urn as xs:string
-) {
-
-  let $inv :=
-    if ($a_inv)
-    then $a_inv
-    else $ctsx:defaultInventory
-    
-
-  let $cts := ctsx:parseUrn($inv, $a_urn)
-  let $nparts := fn:count($cts/passageParts/rangePart[1]/part)
-  
-  let $reffs := ctsx:getValidUrns($inv, $cts/versionUrn/text(), $nparts, false()) 
-  let $urns  := local:prevNextUrns($cts, 0, $reffs)
-  
-  return element CTS:reply
-  {
-    element CTS:prevnext {
-        $urns
-    }
-  }
-};
-
-declare %private function local:prevNextUrns(
+declare function cts-common:prevNextUrns(
     $cts as element()*, (: CTS from prepare passage for example :)
     $amount as xs:integer, (: Number of nodes to select (overrides urns differences), if amout is 0 it is computed according to urns diff or 0 :)
     $reffs as element()* (: Sequence of urn elements :)
@@ -1115,71 +801,29 @@ declare %private function local:prevNextUrns(
             return ($s, $e)
     return (
         element CTS:prev {
-            element CTS:urn { ctsx:mergeUrns($prevFirstUrn) }
+            element CTS:urn { cts-common:mergeUrns($prevFirstUrn) }
         },
         element CTS:next {
-            element CTS:urn { ctsx:mergeUrns($nextFirstUrn) }
+            element CTS:urn { cts-common:mergeUrns($nextFirstUrn) }
         }
     )
 };
 
-declare function ctsx:getLabel(
-    $a_inv as xs:string*,
-    $a_urn as xs:string
-) {
-
-  let $inv :=
-    if ($a_inv)
-    then $a_inv
-    else $ctsx:defaultInventory
-    
-  let $urn := string-join(subsequence(tokenize($a_urn, ":"), 1, 4), ":")
-    
-  let $inventoryRecord := $ctsx:conf//ti:TextInventory[@tiid=$inv]//(ti:edition|ti:translation)
-      [@urn eq $urn]
-  
-  return element CTS:reply
-  {
-    namespace ti { "http://chs.harvard.edu/xmlns/cts" },
-    element CTS:label {
-        local:labelLoop($inventoryRecord)
-    }
-  }
+declare function cts-common:extractPassage($a_inv, $a_urn)
+{
+  let $passage := cts-common:preparePassage($a_inv, $a_urn)
+  return
+    (: extract full passage :)
+    cts-common:_extractPassageLoop($passage)
 };
 
-declare function ctsx:getFirstUrn(
-    $a_inv as xs:string*,
-    $a_urn as xs:string
-) {
-
-  let $inv :=
-    if ($a_inv)
-    then $a_inv
-    else $ctsx:defaultInventory
-    
-  let $cts := ctsx:parseUrn($inv, $a_urn)
-  let $nparts := fn:count($cts/passageParts/rangePart[1]/part)
-  let $reffs := ctsx:getValidUrns($inv, $cts/versionUrn/text(), $nparts + 1, false()) 
-  let $startWith :=
-    if ($nparts = 0)
-    then $cts/urn/text() || ":"
-    else $cts/urn/text() || "."
-    
-  return element CTS:reply
-  {
-    element CTS:urn {
-        $reffs[contains(./text(), $startWith)][1]/text()
-    }
-  }
-};
-
-declare %private function local:labelLoop(
+declare function cts-common:labelLoop(
     $a_node as element()
 ) {
     if($a_node/local-name() = ("edition", "translation"))
     then 
         (
-            local:labelLoop($a_node/ancestor::ti:work),
+            cts-common:labelLoop($a_node/ancestor::ti:work),
             for $desc in $a_node/ti:description
                 return element ti:version {
                     $desc/@*,
@@ -1193,7 +837,7 @@ declare %private function local:labelLoop(
     else if($a_node/local-name() = "work")
     then 
         (
-            local:labelLoop($a_node/ancestor::ti:textgroup),
+            cts-common:labelLoop($a_node/ancestor::ti:textgroup),
             for $title in $a_node/ti:title
                 return element ti:title {
                     $title/@*,
@@ -1214,3 +858,64 @@ declare %private function local:labelLoop(
         )
     else ()
 };
+
+declare function cts-common:getCapabilities($a_inv, $a_namespaceUrn, $a_groupUrn, $a_workUrn) as node() {
+  let $ti := ($cts-common:conf//ti:TextInventory[@tiid = $a_inv])[1]
+  
+  let $groups :=
+    (: specified work :)
+    if (fn:exists($a_groupUrn))
+    then $ti/ti:textgroup[@urn = $a_groupUrn]
+    else if (fn:exists($a_namespaceUrn))
+    then $ti/ti:textgroup[starts-with(@urn, $a_namespaceUrn)]
+    else $ti/ti:textgroup
+
+  let $groupUrns := fn:distinct-values($groups/@urn)
+  let $works :=
+    (: specified work :)
+    if (fn:exists($a_workUrn))
+    then $ti//ti:work[@groupUrn = $groupUrns][@urn = $a_workUrn]
+    (: all works in inventory :)
+    else $ti//ti:work[@groupUrn = $groupUrns]
+
+  return
+    element CTS:reply
+    {
+      element ti:filter {$a_workUrn},
+      element ti:TextInventory
+      {
+        (:
+        attribute {concat('xmlns:', "ti")} { "http://chs.harvard.edu/xmlns/cts3/ti" },
+        attribute {concat('xmlns:', "dc")} { "http://purl.org/dc/elements/1.1/" },
+        attribute tiversion { "5.0.rc.1" },
+        :)
+        $ti/@*,
+        for $group in $groups
+        let $groupWorks := $works[@groupUrn eq $group/@urn]
+        where fn:count($groupWorks) gt 0
+        order by $group/@urn
+        return
+          element ti:textgroup
+          {
+            $group/@urn,
+            for $work in $groupWorks
+            order by $work/@urn
+            return
+              element ti:work
+              {
+                $work/(@urn,@xml:lang),
+                $work/*,
+                for $version in
+                  /(ti:edition|ti:translation)[@workUrn eq $work/@urn]
+                order by $version/@urn
+                return
+                  element { fn:node-name($version) }
+                  {
+                    $version/@urn,
+                    $version/*
+                  }
+              }
+          }
+      }
+    }
+  }  ;
