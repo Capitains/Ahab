@@ -609,7 +609,7 @@ declare %private function local:use-fake-document-cache(
                                 $remove
                             )
             let $store-return-status := (
-                    xmldb:login('/db', $ctsx:cache/user/text(), $ctsx:cache/password/text()),
+                    xmldb:login('/db/urns-cache', $ctsx:cache/user/text(), $ctsx:cache/password/text()),
                     xmldb:create-collection('/db/urns-cache/', $safeUrn),
                     xmldb:store($collection, $filename, element reff { $response } )
                 )
@@ -1135,7 +1135,8 @@ declare function ctsx:getLabel(
     
   let $urn := string-join(subsequence(tokenize($a_urn, ":"), 1, 4), ":")
     
-  let $inventoryRecord := ctsx:conf//ti:TextInventory[@tiid=$inv]//element()[@urn=$urn]
+  let $inventoryRecord := $ctsx:conf//ti:TextInventory[@tiid=$inv]//(ti:edition|ti:translation)
+      [@urn eq $urn]
   
   return element CTS:reply
   {
