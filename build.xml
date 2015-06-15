@@ -1,0 +1,15 @@
+<project default="xar" name="CTS5XQ">
+    <xmlproperty file="expath-pkg.xml"/>
+    <property name="project.version" value="${package(version)}"/>
+    <property name="project.app" value="CTS5XQ"/>
+    <property name="build.dir" value="build"/>
+    <property name="modules" value="modules"/>
+    <target name="xar">
+        <mkdir dir="${build.dir}"/>
+        <zip 
+            basedir="."
+            destfile="${build.dir}/${project.app}-${project.version}.xar" 
+            excludes="${build.dir}/*, .git/*, .gitignore"
+        />
+    </target>
+</project>

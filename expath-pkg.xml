@@ -1,0 +1,4 @@
+<package xmlns="http://expath.org/ns/pkg" name="http://github.com/PerseusDL/CTS5XQ" abbrev="CTS5XQ" version="0.1.0" spec="1.0">
+    <title>CTS 5 API XQ</title>
+    <dependency package="http://exist-db.org/apps/shared"/>
+</package>

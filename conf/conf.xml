@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<cts>
+    <repositories inventoryCollection="/db/inventory"/>
+    <credential>
+        <username>admin</username>
+        <password>password</password>
+    </credential>
+    <default>annotsrc</default>
+</cts>
