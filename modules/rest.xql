@@ -42,10 +42,10 @@ declare
     %rest:query-param("inv", "{$inv}", "")
     %rest:query-param("level", "{$level}", "")
     %rest:produces("application/xml", "text/xml")
-function cts-api:root($query as xs:string, $inv as xs:string*, $urn as xs:string*, $level as xs:string*) {
+function cts-api:root($request as xs:string, $inv as xs:string*, $urn as xs:string*, $level as xs:string*) {
   let $startTime := util:system-time()
   let $map := map:new()
-  let $_reply := cts-api:router($query, $inv, $urn, $level)
+  let $reply := cts-api:router($request, $inv, $urn, $level)
   let $cts := map:get($map, "cts")
   let $response :=
     if (fn:node-name($reply) eq xs:QName("CTS:CTSError"))
