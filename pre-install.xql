@@ -29,5 +29,4 @@ declare function local:mkcol($collection, $path) {
 
 (: store the collection configuration :)
 local:mkcol("/db/system/config", $target),
-xdb:create-collection("/db/urns-cache"),
 xdb:store-files-from-pattern(concat("/system/config", $target), $dir, "*.xconf")
