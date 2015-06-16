@@ -26,10 +26,10 @@ import module namespace ctsx = "http://alpheios.net/namespaces/cts"
        at "./cts.xql";
 import module namespace ctsi = "http://alpheios.net/namespaces/cts-implementation"
        at "./cts-impl.xql";
+import module namespace rest="http://exquery.org/ns/restxq";
 
 declare namespace CTS = "http://chs.harvard.edu/xmlns/cts";
 declare namespace tei = "http://www.tei-c.org/ns/1.0";
-declare namespace rest="http://exquery.org/ns/restxq";
 
 (:~
  : Get all possible request
