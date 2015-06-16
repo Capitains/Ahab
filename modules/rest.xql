@@ -37,10 +37,10 @@ declare namespace tei = "http://www.tei-c.org/ns/1.0";
 declare
     %rest:GET
     %rest:path("/")
-    %rest:form-param("request", "{$request}", "")
-    %rest:form-param("urn", "{$urn}", "")
-    %rest:form-param("inv", "{$inv}", "")
-    %rest:form-param("level", "{$level}", "")
+    %rest:query-param("request", "{$request}", "")
+    %rest:query-param("urn", "{$urn}", "")
+    %rest:query-param("inv", "{$inv}", "")
+    %rest:query-param("level", "{$level}", "")
     %rest:produces("application/xml", "text/xml")
 function cts-api:root($query as xs:string, $inv as xs:string*, $urn as xs:string*, $level as xs:string*) {
   let $startTime := util:system-time()
