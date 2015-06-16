@@ -589,7 +589,8 @@ declare function cts-common:_extractPassage(
   if (fn:empty($a_path1) and fn:empty($a_path2)) 
   then 
       $a_base/node() 
-  else if (not(fn:head($a_path1)) or not(fn:head($a_path2)))
+  else if (not(fn:head($a_path1)) and not(fn:head($a_path2)))
+  (: "and" because if they are both missing, it means we have a //:)
   then 
       let $step1 := fn:head(fn:tail($a_path1))
       let $step2 := fn:head(fn:tail($a_path2))
