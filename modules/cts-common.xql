@@ -586,11 +586,45 @@ declare function cts-common:_extractPassage(
 ) as node()*
 {
   (: if no paths, return all subnodes :)
-  if (fn:empty($a_path1) and fn:empty($a_path2)) then $a_base/node() else
-
+  if (fn:empty($a_path1) and fn:empty($a_path2)) 
+  then 
+      $a_base/node() 
+  else if (not(fn:head($a_path1)) and not(fn:head($a_path2)))
+  (: "and" because if they are both missing, it means we have a //:)
+  then 
+      let $step1 := fn:head(fn:tail($a_path1))
+      let $step2 := fn:head(fn:tail($a_path2))
+      
+      let $n1 := 
+        for $n in util:eval("$a_base/descendant::node()[count(./descendant::" || $step1 || ") = 1]", false()) 
+            return 
+                "*:" ||
+                local-name($n) || 
+                "[count(.//" ||
+                $step1 ||
+                ") = 1]"
+                
+      let $n2 := 
+        for $n in util:eval("$a_base/descendant::node()[count(./descendant::" || $step2 || ") = 1]", false())
+            return 
+                "*:" ||
+                local-name($n) ||
+                "[count(.//" || 
+                $step2 || 
+                ") = 1]"
+        
+      return
+        cts-common:_extractPassage(
+            $a_base,
+            ($n1, fn:tail($a_path1)),
+            ($n2, fn:tail($a_path2))
+        )
+  else
+  
   (: evaluate next steps in paths :)
   let $step1 := fn:head($a_path1)
   let $step2 := fn:head($a_path2)
+    
   let $n1 :=
     if (fn:exists($a_path1) and fn:exists($step1))
     then util:eval("$a_base/" || $step1, true())
