@@ -10,5 +10,5 @@
     <version>0.1.2</version>
     <target>CTS5XQ</target>
     <prepare>pre-install.xql</prepare>
-    <finish/>
+    <finish>post-install.xql</finish>
 </meta>

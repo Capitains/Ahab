@@ -35,13 +35,13 @@ declare namespace output = "http://www.w3.org/2010/xslt-xquery-serialization";
  :)
 declare
     %rest:GET
-    %rest:path("/cts5")
+    %rest:path("/cts")
     %rest:query-param("request", "{$request}", "")
     %rest:query-param("urn", "{$urn}", "")
     %rest:query-param("inv", "{$inv}", "")
     %rest:query-param("level", "{$level}", "")
     %rest:produces("application/xml", "text/xml")
-function cts-api:root($request as xs:string, $inv as xs:string*, $urn as xs:string*, $level as xs:string*) {
+function cts-api:root($request as xs:string*, $inv as xs:string*, $urn as xs:string*, $level as xs:string*) {
   let $startTime := util:system-time()
   let $query := cts-api:routerText($request)
   let $_reply := cts-api:router($query, $inv, $urn, $level)
