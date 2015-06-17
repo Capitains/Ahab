@@ -6,4 +6,5 @@
         <password>password</password>
     </credential>
     <default>annotsrc</default>
+    <debug>yes</debug>
 </cts>

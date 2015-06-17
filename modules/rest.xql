@@ -29,7 +29,7 @@ declare namespace CTS = "http://chs.harvard.edu/xmlns/cts";
 
 declare namespace rest = "http://exquery.org/ns/restxq";
 declare namespace output = "http://www.w3.org/2010/xslt-xquery-serialization";
-
+declare variable $cts-api:debug := fn:doc("../conf/conf.xml")//debug;
 (:~
  : Get all possible request
  :)
@@ -48,8 +48,8 @@ function cts-api:root($request as xs:string*, $inv as xs:string*, $urn as xs:str
   let $cts := $_reply/cts/ctsURN
   let $reply := $_reply/reply/node()
   let $response :=
-    if (fn:node-name($reply) eq xs:QName("CTS:CTSError"))
-    then $reply
+    if (fn:node-name($_reply) eq xs:QName("CTS:CTSError"))
+    then cts-api:debug($_reply)
     else if (fn:empty($reply))
     then cts-api:error404() 
     else
@@ -185,9 +185,17 @@ declare %private
 
 declare %private function cts-api:error404() {
   <rest:response>
-    <http:response status="404" message="I was not found.">
+    <http:response status="404" message="Unknown request.">
       <http:header name="Content-Language" value="en"/>
       <http:header name="Content-Type" value="text/html; charset=utf-8"/>
     </http:response>
   </rest:response>
 };
+
+declare %private function cts-api:debug($information as node()*) {
+  if($cts-api:debug/text() eq "yes")
+  then cts-api:http-response(400, $information) (:cts-api:http-response(400, $information):)
+  else cts-api:http-response(400, <CTS:CTSError>{$information/code}</CTS:CTSError>)
+  
+};
+
