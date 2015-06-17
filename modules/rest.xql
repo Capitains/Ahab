@@ -24,6 +24,8 @@ import module namespace mapsutils = "http://github.com/ponteineptique/CTS-API"
        at "./maps-utils.xql";
 import module namespace ctsx = "http://alpheios.net/namespaces/cts"
        at "./cts.xql";
+import module namespace cts-common = "http://github.com/Capitains/CTS5-XQ/commons"
+       at "./cts-common.xql";
 import module namespace ctsi = "http://alpheios.net/namespaces/cts-implementation"
        at "./cts-impl.xql";
 import module namespace rest="http://exquery.org/ns/restxq";
@@ -44,24 +46,25 @@ declare
     %rest:produces("application/xml", "text/xml")
 function cts-api:root($request as xs:string, $inv as xs:string*, $urn as xs:string*, $level as xs:string*) {
   let $startTime := util:system-time()
-  let $map := map:new()
-  let $reply := cts-api:router($request, $inv, $urn, $level)
-  let $cts := map:get($map, "cts")
+  let $query := cts-api:routerText($request)
+  let $_reply := cts-api:router($query, $inv, $urn, $level)
+  let $cts := $_reply/cts/ctsURN
+  let $reply := $_reply/reply/node()
   let $response :=
     if (fn:node-name($reply) eq xs:QName("CTS:CTSError"))
     then
       $reply
     else
-      element { "CTS:" || $e_query }
+      element { "CTS:" || $query }
       {
         namespace tei { "http://www.tei-c.org/ns/1.0" },
         element CTS:request
         {
           attribute elapsed-time { string(seconds-from-duration(util:system-time() - $startTime) * 1000) },
-          element CTS:requestName { $e_query },
-          element CTS:requestUrn { $e_urn },
+          element CTS:requestName { $query },
+          element CTS:requestUrn { $urn },
           element CTS:psg { xs:string($cts/passage) },
-          element CTS:workurn { xs:string($cts/editionUrn) },
+          element CTS:workurn { xs:string($cts/workUrn) },
           for $gn in $cts/groupname
           return
             element CTS:groupname
@@ -87,33 +90,43 @@ function cts-api:root($request as xs:string, $inv as xs:string*, $urn as xs:stri
       $reply
       }
 
-  return (
-      <rest:response>
-      </rest:response>,
-      $response)
+  return 
+      $response
 };
 
 declare 
   function
-    cts-api:router($e_query as xs:string, $e_inv as xs:string*, $e_urn as xs:string*, $e_level as xs:string*) as node()* {
+    cts-api:router(
+        $e_query as xs:string, 
+        $e_inv as xs:string*, 
+        $e_urn as xs:string*, 
+        $e_level as xs:string*
+    ) as node()* {
         try {
-            switch($e_query)
-                case "GetCapabilities" 
-                    return ctsx:getCapabilities($e_inv, $e_urn)
-                case "GetValidReff" 
-                    return ctsx:getValidReff($e_inv, $e_urn, $e_level)
-                case "GetPassage"
-                    return ctsx:getPassage($e_inv, $e_urn)
-                case "GetFirstUrn"
-                    return ctsx:getFirstUrn($e_inv, $e_urn)
-                case "GetPrevNextUrn"
-                    return ctsx:getPrevNextUrn($e_inv, $e_urn)
-                case "GetLabel"
-                    return ctsx:getLabel($e_inv, $e_urn)
-                case "GetPassagePlus"
-                    return ctsx:getPassagePlus($e_inv, $e_urn)
-                default
-                    return () (: When the request does not exist :)
+            element resource {
+                element reply {
+                    switch($e_query)
+                        case "GetCapabilities" 
+                            return ctsx:getCapabilities($e_inv, $e_urn)
+                        case "GetValidReff" 
+                            return ctsx:getValidReff($e_inv, $e_urn, $e_level)
+                        case "GetPassage"
+                            return ctsx:getPassage($e_inv, $e_urn)
+                        case "GetFirstUrn"
+                            return ctsx:getFirstUrn($e_inv, $e_urn)
+                        case "GetPrevNextUrn"
+                            return ctsx:getPrevNextUrn($e_inv, $e_urn)
+                        case "GetLabel"
+                            return ctsx:getLabel($e_inv, $e_urn)
+                        case "GetPassagePlus"
+                            return ctsx:getPassagePlus($e_inv, $e_urn)
+                        default
+                            return () (: When the request does not exist :)
+                },
+                element cts { 
+                    cts-common:parseUrn($e_inv, $e_urn)
+                }
+            }
         } catch * {
             cts-api:errorLayout($err:description, $err:value, $err:code, $err:line-number, $err:column-number, $err:additional)
         }
@@ -129,4 +142,28 @@ declare function cts-api:errorLayout
       <position>l {$line-number}, c {$column-number}</position>
       <stack>{$additional}</stack>
     </CTS:CTSError>
+};
+
+declare 
+    function 
+    cts-api:routerText(
+        $e_query as xs:string*
+    ) as xs:string {
+    switch(fn:lower-case($e_query))
+        case "getcapabilities" 
+            return "GetCapabilities" 
+        case "getvalidreff" 
+            return "GetValidReff" 
+        case "getpassage"
+            return "GetPassage"
+        case "getfirsturn"
+            return "GetFirstUrn"
+        case "getprevnexturn"
+            return "GetPrevNextUrn"
+        case "getlabel"
+            return "GetLabel"
+        case "getpassageplus"
+            return "GetPassagePlus"
+        default
+            return "" (: When the request does not exist :)
 };
