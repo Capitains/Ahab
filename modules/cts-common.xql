@@ -915,7 +915,6 @@ declare function cts-common:getCapabilities($a_inv, $a_namespaceUrn, $a_groupUrn
   return
     element CTS:reply
     {
-      element ti:filter {$a_workUrn},
       element ti:TextInventory
       {
         (:
@@ -932,6 +931,7 @@ declare function cts-common:getCapabilities($a_inv, $a_namespaceUrn, $a_groupUrn
           element ti:textgroup
           {
             $group/@urn,
+            $group/ti:groupname,
             for $work in $groupWorks
             order by $work/@urn
             return
