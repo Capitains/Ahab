@@ -20,25 +20,22 @@ xquery version "3.0";
 :)
 module namespace cts-api="http://github.com/Capitains/cts-XQ";
 
-import module namespace mapsutils = "http://github.com/ponteineptique/CTS-API"
-       at "./maps-utils.xql";
 import module namespace ctsx = "http://alpheios.net/namespaces/cts"
        at "./cts.xql";
 import module namespace cts-common = "http://github.com/Capitains/CTS5-XQ/commons"
        at "./cts-common.xql";
-import module namespace ctsi = "http://alpheios.net/namespaces/cts-implementation"
-       at "./cts-impl.xql";
-import module namespace rest="http://exquery.org/ns/restxq";
 
 declare namespace CTS = "http://chs.harvard.edu/xmlns/cts";
-declare namespace tei = "http://www.tei-c.org/ns/1.0";
+
+declare namespace rest = "http://exquery.org/ns/restxq";
+declare namespace output = "http://www.w3.org/2010/xslt-xquery-serialization";
 
 (:~
  : Get all possible request
  :)
 declare
     %rest:GET
-    %rest:path("/")
+    %rest:path("/cts5")
     %rest:query-param("request", "{$request}", "")
     %rest:query-param("urn", "{$urn}", "")
     %rest:query-param("inv", "{$inv}", "")
@@ -52,49 +49,67 @@ function cts-api:root($request as xs:string, $inv as xs:string*, $urn as xs:stri
   let $reply := $_reply/reply/node()
   let $response :=
     if (fn:node-name($reply) eq xs:QName("CTS:CTSError"))
-    then
-      $reply
+    then $reply
+    else if (fn:empty($reply))
+    then cts-api:error404() 
     else
-      element { "CTS:" || $query }
-      {
-        namespace tei { "http://www.tei-c.org/ns/1.0" },
-        element CTS:request
-        {
-          attribute elapsed-time { string(seconds-from-duration(util:system-time() - $startTime) * 1000) },
-          element CTS:requestName { $query },
-          element CTS:requestUrn { $urn },
-          element CTS:psg { xs:string($cts/passage) },
-          element CTS:workurn { xs:string($cts/workUrn) },
-          for $gn in $cts/groupname
-          return
-            element CTS:groupname
+      cts-api:http-response(
+          200,
+          element { "CTS:" || $query }
+          {
+            namespace tei { "http://www.tei-c.org/ns/1.0" },
+            element CTS:request
             {
-              attribute xml:lang { $gn/@xml:lang },
-              xs:string($gn)
+              attribute elapsed-time { string(seconds-from-duration(util:system-time() - $startTime) * 1000) },
+              element CTS:requestName { $query },
+              element CTS:requestUrn { $urn },
+              element CTS:psg { xs:string($cts/passage) },
+              element CTS:workurn { xs:string($cts/workUrn) },
+              for $gn in $cts/groupname
+              return
+                element CTS:groupname
+                {
+                  attribute xml:lang { $gn/@xml:lang },
+                  xs:string($gn)
+                },
+              for $ti in $cts/title
+              return
+                element CTS:title
+                {
+                  attribute xml:lang { $ti/@xml:lang },
+                  xs:string($ti)
+                },
+              for $la in $cts/label
+              return
+                element CTS:label
+                {
+                  attribute xml:lang { $la/@xml:lang },
+                  xs:string($la)
+                }
             },
-          for $ti in $cts/title
-          return
-            element CTS:title
-            {
-              attribute xml:lang { $ti/@xml:lang },
-              xs:string($ti)
-            },
-          for $la in $cts/label
-          return
-            element CTS:label
-            {
-              attribute xml:lang { $la/@xml:lang },
-              xs:string($la)
-            }
-        },
-      $reply
-      }
+          $reply
+          }
+      )
 
   return 
       $response
 };
 
-declare 
+(:~ 
+ :  Generates a HTTP response element with a payload.  
+ :)
+declare %private function cts-api:http-response($http-code as xs:integer, $resource)
+{
+    (
+        <rest:response>
+            <http:response status="{$http-code}">
+            </http:response>
+        </rest:response>,
+        $resource
+    )
+};
+
+declare  %private
   function
     cts-api:router(
         $e_query as xs:string, 
@@ -132,7 +147,7 @@ declare
         }
   };
 
-declare function cts-api:errorLayout
+declare %private function cts-api:errorLayout
     ($description, $value, $code, $line-number, $column-number, $additional) {
         
     <CTS:CTSError>
@@ -144,7 +159,7 @@ declare function cts-api:errorLayout
     </CTS:CTSError>
 };
 
-declare 
+declare %private
     function 
     cts-api:routerText(
         $e_query as xs:string*
@@ -166,4 +181,13 @@ declare
             return "GetPassagePlus"
         default
             return "" (: When the request does not exist :)
+};
+
+declare %private function cts-api:error404() {
+  <rest:response>
+    <http:response status="404" message="I was not found.">
+      <http:header name="Content-Language" value="en"/>
+      <http:header name="Content-Type" value="text/html; charset=utf-8"/>
+    </http:response>
+  </rest:response>
 };

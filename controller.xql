@@ -1,15 +1,7 @@
 xquery version "3.0";
 
-import module namespace cts-api="http://github.com/Capitains/cts-XQ" at "./modules/rest.xql";
-import module namespace restxq="http://exist-db.org/xquery/restxq" at "../dashboard/modules/restxq.xql";
+import module namespace xrest="http://exquery.org/ns/restxq/exist" at "java:org.exist.extensions.exquery.restxq.impl.xquery.exist.ExistRestXqModule";
 
-declare variable $exist:path external;
-declare variable $exist:resource external;
-declare variable $exist:controller external;
-declare variable $exist:prefix external;
-declare variable $exist:root external;
-
-let $functions := util:list-functions("http://github.com/Capitains/cts-XQ")
-return
-    (: All URL paths are processed by the restxq module :)
-    restxq:process($exist:path, $functions)
+let $_ := xrest:register-module(xs:anyURI("/apps/CTS5XQ/modules/rest.xql"))
+return (xs:anyURI("/apps/CTS5XQ/modules/rest.xql"))
+    
