@@ -39,7 +39,7 @@ declare
     %rest:query-param("request", "{$request}", "")
     %rest:query-param("urn", "{$urn}", "")
     %rest:query-param("inv", "{$inv}", "")
-    %rest:query-param("level", "{$level}", "")
+    %rest:query-param("level", "{$level}", "1")
     %rest:produces("application/xml", "text/xml")
 function cts-api:root($request as xs:string*, $inv as xs:string*, $urn as xs:string*, $level as xs:string*) {
   let $startTime := util:system-time()
@@ -124,7 +124,7 @@ declare  %private
                         case "GetCapabilities" 
                             return ctsx:getCapabilities($e_inv, $e_urn)
                         case "GetValidReff" 
-                            return ctsx:getValidReff($e_inv, $e_urn, $e_level)
+                            return ctsx:getValidReff($e_inv, $e_urn, xs:integer($e_level))
                         case "GetPassage"
                             return ctsx:getPassage($e_inv, $e_urn)
                         case "GetFirstUrn"
