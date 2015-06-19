@@ -37,7 +37,7 @@ declare function cts-common:fake-match-document(
             if ($remove)
             then replace($xpath, "^("||replace($remove, '(\.|\[|\]|\\|\||\-|\^|\$|\?|\*|\+|\{|\}|\(|\))','\\$1')||")", "")
             else $xpath
-        let $masters := util:eval("$body/" || $masterPath, true())
+        let $masters := util:eval("$body" || $masterPath, true())
         let $next := subsequence($citations, 2)
         let $nextLevel := $level + 1
     
