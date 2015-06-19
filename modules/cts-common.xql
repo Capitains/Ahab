@@ -10,7 +10,7 @@ declare namespace tei = "http://www.tei-c.org/ns/1.0";
 
 declare variable $cts-common:defaultInventory := fn:doc("../conf/conf.xml")//default/text();
 declare variable $cts-common:conf := collection(xs:string(fn:doc("../conf/conf.xml")//inventories/@inventoryCollection));
-declare variable $cts-common:cache := fn:doc("../conf/conf.xml")//credentials;
+declare variable $cts-common:cache := fn:doc("../conf/conf.xml")//credential;
 
 
 declare function cts-common:citationXpath($citation) {
@@ -37,7 +37,7 @@ declare function cts-common:fake-match-document(
             if ($remove)
             then replace($xpath, "^("||replace($remove, '(\.|\[|\]|\\|\||\-|\^|\$|\?|\*|\+|\{|\}|\(|\))','\\$1')||")", "")
             else $xpath
-        let $masters := util:eval("$body/" || $masterPath, true())
+        let $masters := util:eval("$body" || $masterPath, true())
         let $next := subsequence($citations, 2)
         let $nextLevel := $level + 1
     
@@ -407,7 +407,7 @@ declare function cts-common:use-fake-document-cache(
                                 $remove
                             )
             let $store-return-status := (
-                    xmldb:login('/db/urns-cache', $cts-common:cache/user/text(), $cts-common:cache/password/text()),
+                    xmldb:login('/db/urns-cache', $cts-common:cache/username/text(), $cts-common:cache/password/text()),
                     xmldb:create-collection('/db/urns-cache/', $safeUrn),
                     xmldb:store($collection, $filename, element reff { $response } )
                 )
