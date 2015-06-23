@@ -7,7 +7,7 @@
     <license>GNU-LGPL</license>
     <copyright>true</copyright>
     <type>application</type>
-    <version>0.2.3</version>
+    <version>0.2.4</version>
     <target>CTS5XQ</target>
     <prepare>pre-install.xql</prepare>
     <finish>post-install.xql</finish>
