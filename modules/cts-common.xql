@@ -158,6 +158,7 @@ declare function cts-common:parseUrn($a_inv as xs:string, $a_urn as xs:string)
         element workUrn { $workUrn },
         element workLang { $catwork/@xml:lang },
         element namespace{ $namespace },
+        element citations { $catversion//ti:citationMapping/child::node() },
         (: TODO is it possible for components of the work id to be in different namespaces?? :)
         for $gn in $cat//ti:textgroup[@urn eq $groupUrn]
                         /ti:groupname

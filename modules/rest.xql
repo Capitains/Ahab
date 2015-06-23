@@ -135,6 +135,8 @@ declare  %private
                             return ctsx:getLabel($e_inv, $e_urn)
                         case "GetPassagePlus"
                             return ctsx:getPassagePlus($e_inv, $e_urn)
+                        case "GetFirstPassagePlus"
+                            return ctsx:getFirstPassagePlus($e_inv, $e_urn)
                         default
                             return () (: When the request does not exist :)
                 },
@@ -179,6 +181,8 @@ declare %private
             return "GetLabel"
         case "getpassageplus"
             return "GetPassagePlus"
+        case "getfirstpassageplus"
+            return "GetFirstPassagePlus"
         default
             return "" (: When the request does not exist :)
 };

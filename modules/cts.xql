@@ -233,7 +233,7 @@ declare function ctsx:getPrevNextUrn(
     
 
   let $cts := cts-common:parseUrn($inv, $a_urn)
-  let $nparts := fn:count($cts/passageParts/rangePart[1]/part)
+  let $nparts := fn:count($cts//ti:citation)
   
   let $reffs := cts-common:getValidUrns($inv, $cts/versionUrn/text(), $nparts, false()) 
   let $urns  := cts-common:prevNextUrns($cts, 0, $reffs)
@@ -294,4 +294,23 @@ declare function ctsx:getFirstUrn(
         $reffs[contains(./text(), $startWith)][1]/text()
     }
   }
+};
+
+declare function ctsx:getFirstPassagePlus(
+    $a_inv as xs:string*,
+    $a_urn as xs:string
+) {
+
+  let $inv :=
+    if ($a_inv)
+    then $a_inv
+    else $ctsx:defaultInventory
+    
+  let $cts := cts-common:parseUrn($inv, $a_urn)
+  let $nparts := fn:count($cts//ti:citation)
+  let $reffs := cts-common:getValidUrns($inv, $cts/versionUrn/text(), $nparts, false()) 
+    
+  let $newURN := $reffs[1]/text()
+  
+  return ctsx:getPassagePlus($a_inv, $newURN)
 };
