@@ -865,9 +865,7 @@ declare function cts-common:labelLoop(
                     $desc/text()
                 }
             ,
-            element ti:citation {
-                string-join($a_node//ti:citation/@label, ", ")
-            }
+            $a_node/ti:online/ti:citationMapping/ti:citation
         )
     else if($a_node/local-name() = "work")
     then 

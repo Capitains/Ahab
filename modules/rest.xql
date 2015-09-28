@@ -85,7 +85,12 @@ function cts-api:root($request as xs:string*, $inv as xs:string*, $urn as xs:str
                 {
                   attribute xml:lang { $la/@xml:lang },
                   xs:string($la)
-                }
+                },
+           element CTS:citation {
+               namespace ti { "http://chs.harvard.edu/xmlns/cts" },
+               $cts//citations/CTS:citation/@*,
+               $cts//citations/CTS:citation/*
+           }
             },
           $reply
           }

@@ -207,10 +207,7 @@ declare function ctsx:getPassagePlus(
   return
     element CTS:reply {
       element CTS:urn { $a_urn },
-      element CTS:label {
-        namespace ti { "http://chs.harvard.edu/xmlns/cts" },
-        ctsx:getLabel($a_inv, $a_urn)/child::element()
-      },
+      ctsx:getLabel($a_inv, $a_urn)/ti:label,
       element CTS:passage {
         $passage
       },
@@ -226,17 +223,12 @@ declare function ctsx:getPrevNextUrn(
     $a_urn as xs:string
 ) {
 
-  let $inv :=
-    if ($a_inv)
-    then $a_inv
-    else $ctsx:defaultInventory
-    
 
-  let $cts := cts-common:parseUrn($inv, $a_urn)
-  let $nparts := fn:count($cts//ti:citation)
-  
-  let $reffs := cts-common:getValidUrns($inv, $cts/versionUrn/text(), $nparts, false()) 
-  let $urns  := cts-common:prevNextUrns($cts, 0, $reffs)
+  let $passageInfos := cts-common:preparePassage($a_inv, $a_urn)
+  let $cts := $passageInfos[4]
+  let $count := count($cts/passageParts/rangePart[1]/part)
+  let $reffs := cts-common:getValidUrns($a_inv, $cts/versionUrn, $count, false())
+  let $urns := cts-common:prevNextUrns($cts, 0, $reffs)
   
   return element CTS:reply
   {
