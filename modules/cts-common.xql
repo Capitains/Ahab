@@ -16,7 +16,7 @@ declare variable $cts-common:cache := fn:doc("../conf/conf.xml")//credential;
 declare function cts-common:citationXpath($citation) {
     
     let $first := fn:string($citation/@scope)
-    let $last := replace(fn:string($citation/@xpath), "//", "/")
+    let $last := fn:string($citation/@xpath)
     
     let $scope := fn:concat($first, $last)
     let $xpath := replace($scope,"='\?'",'')
