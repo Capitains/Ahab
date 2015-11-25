@@ -625,14 +625,20 @@ declare function cts-common:_extractPassage(
   (: evaluate next steps in paths :)
   let $step1 := fn:head($a_path1)
   let $step2 := fn:head($a_path2)
+
     
   let $n1 :=
-    if (fn:exists($a_path1) and fn:exists($step1))
-    then util:eval("$a_base/" || $step1, true())
+    if (fn:exists($a_path1) and fn:exists($step1)) then
+        if (count($a_path1) <= 1)
+        then util:eval("$a_base/" || $step1, true())
+        else util:eval("$a_base/" || $step1 || "[count(descendant::" || fn:string-join(subsequence($a_path1, 2), "/") || ") = 1]", true())
     else ()
   let $n2 :=
-    if (fn:exists($a_path2) and fn:exists($step2))
-    then util:eval("$a_base/" || $step2, true())
+    if (fn:exists($a_path2) and fn:exists($step2)) then
+        if (count($a_path2) <= 1)
+        then util:eval("$a_base/" || $step2, true())
+        else
+            util:eval("$a_base/" || $step2 || "[count(descendant::" || fn:string-join(subsequence($a_path2, 2), "/") || ") = 1]", true())
     else ()
 
   return
@@ -752,7 +758,7 @@ declare function cts-common:preparePassage($a_inv, $a_urn) {
 };
 
 declare function cts-common:_extractPassageLoop($passage) {
-    cts-common:_extractPassage(
+   cts-common:_extractPassage(
       $passage[1],
       fn:tail(fn:tokenize($passage[2], "/")),
       fn:tail(fn:tokenize($passage[3], "/"))
