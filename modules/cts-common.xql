@@ -569,6 +569,21 @@ declare function cts-common:getCatalogEntry($a_cts, $a_inv) as node()*
   return $version
 };
 
+(: 
+  Format descendant children
+ :)
+declare function cts-common:_descendantPassage(
+    $a_path as xs:string*
+) as xs:string* {
+    let $single := if (count($a_path) > 1)
+                    then fn:string-join(subsequence($a_path, 2), "/")
+                    else $a_path
+    return
+        if (substring($single,1,1) = "/")
+        then substring($single, 2)
+        else $single
+};
+
 (:
   cts-common:_extractPassage - recursive function to extract passage
     $a_base - base node
@@ -595,24 +610,56 @@ declare function cts-common:_extractPassage(
   then 
       let $step1 := fn:head(fn:tail($a_path1))
       let $step2 := fn:head(fn:tail($a_path2))
-      
+        
+      let $step1 :=
+        if (fn:empty($step1))
+        then $step2
+        else $step1 
+        
+      let $step2 :=
+        if (fn:empty($step2))
+        then $step1
+        else $step2 
+        
       let $n1 := 
-        for $n in util:eval("$a_base/descendant::node()[count(./descendant::" || $step1 || ") = 1]", false()) 
-            return 
-                "*:" ||
-                local-name($n) || 
-                "[count(.//" ||
-                $step1 ||
-                ") = 1]"
+        try {
+            for $n in util:eval("$a_base/descendant::node()[count(./descendant::" || cts-common:_descendantPassage($step1) || ") = 1]", false()) 
+                return 
+                    "*:" ||
+                    local-name($n) || 
+                    "[count(.//" ||
+                    $step1 ||
+                    ") = 1]"
+        } catch * {
+            fn:error(
+              xs:QName("INVALID-CITATION-Information"),
+              "Unrecognize descendant 1: '" || $step1 || "'" ||
+              "Step 1 is : '" || $step2 || "'" ||
+              "Paths are '" || string-join($a_path1, ",") || "' '" || string-join($a_path2, ",") || "'"
+              
+            )
+        }
                 
-      let $n2 := 
-        for $n in util:eval("$a_base/descendant::node()[count(./descendant::" || $step2 || ") = 1]", false())
+        
+      let $n2 := if (fn:empty($step2))
+          then $n1
+          else try {
+        for $n in util:eval("$a_base/descendant::node()[count(./descendant::" || cts-common:_descendantPassage($step2) || ") = 1]", false())
             return 
                 "*:" ||
                 local-name($n) ||
                 "[count(.//" || 
                 $step2 || 
                 ") = 1]"
+        } catch * {
+            fn:error(
+              xs:QName("INVALID-CITATION-Information"),
+              "Unrecognize descendant 2: '" || $step2 || "'" ||
+              "Step 1 is : '" || $step1 || "'" ||
+              "Paths are '" || string-join($a_path1, ",") || "' '" || string-join($a_path2, ",") || "'"
+              
+            )
+        }
         
       return
         cts-common:_extractPassage(
@@ -621,25 +668,24 @@ declare function cts-common:_extractPassage(
             ($n2, fn:tail($a_path2))
         )
   else
-  
-  (: evaluate next steps in paths :)
-  let $step1 := fn:head($a_path1)
-  let $step2 := fn:head($a_path2)
-
+      (: evaluate next steps in paths :)
+      let $step1 := fn:head($a_path1)
+      let $step2 := fn:head($a_path2)
     
-  let $n1 :=
-    if (fn:exists($a_path1) and fn:exists($step1)) then
-        if (count($a_path1) <= 1)
-        then util:eval("$a_base/" || $step1, true())
-        else util:eval("$a_base/" || $step1 || "[count(descendant::" || fn:string-join(subsequence($a_path1, 2), "/") || ") = 1]", true())
-    else ()
-  let $n2 :=
-    if (fn:exists($a_path2) and fn:exists($step2)) then
-        if (count($a_path2) <= 1)
-        then util:eval("$a_base/" || $step2, true())
-        else
-            util:eval("$a_base/" || $step2 || "[count(descendant::" || fn:string-join(subsequence($a_path2, 2), "/") || ") = 1]", true())
-    else ()
+        
+      let $n1 :=
+        if (fn:exists($a_path1) and fn:exists($step1)) then
+            if (count($a_path1) <= 1)
+            then util:eval("$a_base/" || $step1, true())
+            else util:eval("$a_base/" || $step1 || "[count(descendant::" || cts-common:_descendantPassage($a_path1) || ") = 1]", true())
+        else ()
+      let $n2 :=
+        if (fn:exists($a_path2) and fn:exists($step2)) then
+            if (count($a_path2) <= 1)
+            then util:eval("$a_base/" || $step2, true())
+            else
+                util:eval("$a_base/" || $step2 || "[count(descendant::" || cts-common:_descendantPassage($a_path2) || ") = 1]", true())
+        else ()
 
   return
     (: if steps are identical :)
