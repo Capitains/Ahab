@@ -961,60 +961,68 @@ declare function cts-common:labelLoop(
 declare function cts-common:getCapabilities($a_inv, $a_namespaceUrn, $a_groupUrn, $a_workUrn) as node() {
   let $ti := ($cts-common:conf//ti:TextInventory[@tiid = $a_inv])[1]
   
-  let $groups :=
-    (: specified work :)
-    if (fn:exists($a_groupUrn))
-    then $ti/ti:textgroup[@urn = $a_groupUrn]
-    else if (fn:exists($a_namespaceUrn))
-    then $ti/ti:textgroup[starts-with(@urn, $a_namespaceUrn)]
-    else $ti/ti:textgroup
-
-  let $groupUrns := fn:distinct-values($groups/@urn)
-  let $works :=
-    (: specified work :)
-    if (fn:exists($a_workUrn))
-    then $ti//ti:work[@groupUrn = $groupUrns][@urn = $a_workUrn]
-    (: all works in inventory :)
-    else $ti//ti:work[@groupUrn = $groupUrns]
-
   return
     element CTS:reply
     {
-      element ti:TextInventory
-      {
-        (:
-        attribute {concat('xmlns:', "ti")} { "http://chs.harvard.edu/xmlns/cts3/ti" },
-        attribute {concat('xmlns:', "dc")} { "http://purl.org/dc/elements/1.1/" },
-        attribute tiversion { "5.0.rc.1" },
-        :)
-        $ti/@*,
-        for $group in $groups
-        let $groupWorks := $works[@groupUrn eq $group/@urn]
-        where fn:count($groupWorks) gt 0
-        order by $group/@urn
-        return
-          element ti:textgroup
-          {
-            $group/@urn,
-            $group/ti:groupname,
-            for $work in $groupWorks
-            order by $work/@urn
-            return
-              element ti:work
-              {
-                $work/(@urn,@xml:lang),
-                $work/*,
-                for $version in
-                  /(ti:edition|ti:translation)[@workUrn eq $work/@urn]
-                order by $version/@urn
-                return
-                  element { fn:node-name($version) }
-                  {
-                    $version/@urn,
-                    $version/*
-                  }
-              }
-          }
-      }
-    }
-  }  ;
+        (: only filter if we've been asked to :)
+        if (fn:exists($a_namespaceUrn))
+        then
+            let $groups :=
+            (: specified work :)
+            if (fn:exists($a_groupUrn))
+            then $ti/ti:textgroup[@urn = $a_groupUrn]
+            else if (fn:exists($a_namespaceUrn))
+            then $ti/ti:textgroup[starts-with(@urn, $a_namespaceUrn)]
+            else $ti/ti:textgroup
+      
+            let $groupUrns := fn:distinct-values($groups/@urn)
+        
+            let $works :=
+              (: specified work :)
+              if (fn:exists($a_workUrn))
+              then $ti//ti:work[@groupUrn = $groupUrns][@urn = $a_workUrn]
+              (: all works in inventory :)
+              else $ti//ti:work[@groupUrn = $groupUrns]
+
+              return
+                element ti:TextInventory
+                {
+                    (:
+                        attribute {concat('xmlns:', "ti")} { "http://chs.harvard.edu/xmlns/cts3/ti" },
+                        attribute {concat('xmlns:', "dc")} { "http://purl.org/dc/elements/1.1/" },
+                        attribute tiversion { "5.0.rc.1" },
+                    :)
+                    $ti/@*,
+                    for $group in $groups
+                    let $groupWorks := $works[@groupUrn eq $group/@urn]
+                    where fn:count($groupWorks) gt 0
+                    order by $group/@urn
+                    return
+                        element ti:textgroup
+                        {
+                         $group/@urn,
+                         $group/ti:groupname,
+                         for $work in $groupWorks
+                         order by $work/@urn
+                         return
+                             element ti:work
+                             {
+                                 $work/(@urn,@xml:lang),
+                                 $work/*,
+                                 for $version in
+                                     /(ti:edition|ti:translation)[@workUrn eq $work/@urn]
+                                 order by $version/@urn
+                                 return
+                                     element { fn:node-name($version) }
+                                     {
+                                         $version/@urn,
+                                         $version/*
+                                     }
+                             }
+                        }
+                }   
+        (: no filter so just return the whole inventory :)
+        else
+            $ti
+        }
+  };
